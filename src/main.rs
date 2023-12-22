@@ -1,5 +1,5 @@
 use crate::parser::parser;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 mod parser;
 
@@ -25,23 +25,21 @@ fn main() {
     let intersections = find_intersections(paths);
     println!("Intersections: {:?}", intersections);
 
-    let closest_intersection = intersections
-        .iter()
-        .min_by_key(|(x, y)| x.abs() + y.abs())
-        .unwrap();
+    let closest_intersection = intersections.iter().min_by_key(|(_, steps)| steps).unwrap();
     println!("Closest intersection: {:?}", closest_intersection);
-    println!(
-        "It's manhattan distance: {}",
-        closest_intersection.0.abs() + closest_intersection.1.abs()
-    );
+    // println!(
+    //     "It's manhattan distance: {}",
+    //     closest_intersection.0.abs() + closest_intersection.1.abs()
+    // );
 }
 
-fn find_intersections(paths: Vec<Path>) -> Vec<(isize, isize)> {
+fn find_intersections(paths: Vec<Path>) -> Vec<((isize, isize), usize)> {
     let mut sets = vec![];
     for path in paths {
         let mut x = 0isize;
         let mut y = 0isize;
-        let mut set = HashSet::new();
+        let mut steps = 0usize;
+        let mut visited = HashMap::new();
         for step in path {
             let (direction, count) = step;
             for _ in 0..count {
@@ -51,14 +49,19 @@ fn find_intersections(paths: Vec<Path>) -> Vec<(isize, isize)> {
                     Direction::Up => y += 1,
                     Direction::Left => x -= 1,
                 }
-                set.insert((x, y));
+                steps += 1;
+                visited.entry((x, y)).or_insert(steps);
             }
         }
-        sets.push(set);
+        sets.push(visited);
     }
 
     sets[0]
-        .intersection(&sets[1])
-        .map(|r| *r)
+        .iter()
+        .filter(|(&coords, _)| sets[1].contains_key(&coords))
+        .map(|(&coords, &steps)| {
+            let sum_steps = steps + sets[1].get(&coords).unwrap();
+            (coords, sum_steps)
+        })
         .collect::<Vec<_>>()
 }
